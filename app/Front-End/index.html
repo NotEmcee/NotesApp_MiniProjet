@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NotesApp Kubernetes</title>
+    <style>
+        :root {
+            color-scheme: light;
+            --bg: #0f172a;
+            --bg-accent: rgba(255, 255, 255, 0.06);
+            --card: rgba(255, 255, 255, 0.15);
+            --text: #0f172a;
+            --text-muted: #6b7280;
+            --primary: #00b4d8;
+            --primary-dark: #0092ad;
+            --danger: #f87171;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: 'Inter', 'Segoe UI', Tahoma, sans-serif;
+            background: radial-gradient(circle at top, #0ea5e9, #0f172a 50%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 3rem 1rem;
+            color: #f8fafc;
+        }
+        .shell {
+            width: min(960px, 100%);
+            display: grid;
+            gap: 1.5rem;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 24px;
+            padding: 2.5rem;
+            box-shadow: 0 30px 60px rgba(15, 23, 42, 0.35);
+            backdrop-filter: blur(18px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .hero h1 {
+            margin: 0;
+            font-size: clamp(2rem, 4vw, 2.8rem);
+            letter-spacing: -0.04em;
+        }
+        .hero p {
+            margin: 0.75rem 0 0;
+            color: rgba(248, 250, 252, 0.8);
+            font-size: 1.05rem;
+        }
+        .stats {
+            margin-top: 1.5rem;
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        .pill {
+            background: rgba(15, 23, 42, 0.45);
+            padding: 0.65rem 1.4rem;
+            border-radius: 999px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .workspace {
+            background: #f8fafc;
+            color: var(--text);
+            border-radius: 24px;
+            padding: 2rem;
+            display: grid;
+            gap: 1.75rem;
+        }
+        .workspace header {
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .workspace h2 {
+            margin: 0;
+            font-size: 1.6rem;
+            color: #0f172a;
+        }
+        form {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+        input[type="text"] {
+            flex: 1;
+            min-width: 230px;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            padding: 0.9rem 1.1rem;
+            font-size: 1rem;
+            box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.05);
+            transition: border 0.2s ease, box-shadow 0.2s ease;
+        }
+        input[type="text"]:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(0, 180, 216, 0.15);
+        }
+        button {
+            background: var(--primary);
+            border: none;
+            border-radius: 16px;
+            padding: 0.9rem 1.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #041318;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+            box-shadow: 0 15px 30px rgba(0, 180, 216, 0.35);
+        }
+        button:hover {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+        }
+        button:disabled {
+            opacity: 0.65;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+        ul {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: grid;
+            gap: 0.75rem;
+        }
+        .note-row {
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            padding: 1.1rem 1.25rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            box-shadow: 0 10px 25px rgba(15, 23, 42, 0.06);
+            animation: fadeIn 0.35s ease;
+        }
+        .note-content {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+            flex: 1;
+        }
+        .note-meta {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+        .note-text {
+            margin: 0;
+            font-size: 1rem;
+            color: #0f172a;
+            word-break: break-word;
+        }
+        .note-index {
+            font-weight: 700;
+            font-size: 0.95rem;
+        }
+        .note-actions button {
+            background: rgba(248, 113, 113, 0.12);
+            color: var(--danger);
+            box-shadow: none;
+            padding: 0.65rem 1.1rem;
+        }
+        .note-actions button:hover {
+            background: rgba(248, 113, 113, 0.2);
+        }
+        .empty-state {
+            border: 2px dashed #cbd5f5;
+            border-radius: 16px;
+            padding: 2rem 1rem;
+            text-align: center;
+            color: var(--text-muted);
+            display: grid;
+            gap: 0.5rem;
+        }
+        .hint {
+            color: var(--text-muted);
+            margin: 0;
+            font-size: 0.9rem;
+        }
+        [hidden] {
+            display: none !important;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+
+<main class="shell">
+    <section class="glass-card hero">
+        <h1>NotesApp orchestrée sur Kubernetes</h1>
+        <p>Ajouter, visualiser et gérer vos notes déployées sur votre cluster Minikube via un pipeline 100% automatisé.</p>
+        <div class="stats">
+            <div class="pill">Notes actives&nbsp;: <span data-note-count>0</span></div>
+            <div class="pill">Ingress : <span>notes.&lt;ip&gt;.nip.io</span></div>
+        </div>
+    </section>
+
+    <section class="workspace">
+        <header>
+            <div>
+                <h2>Mes notes</h2>
+                <p class="hint">Tapez votre note puis pressez Entrer pour l'enregistrer.</p>
+    </div>
+        </header>
+
+        <form id="noteForm">
+            <input type="text" id="noteInput" placeholder="Nouvelle note, idée, todo..." autocomplete="off">
+            <button type="submit">Ajouter la note</button>
+        </form>
+
+        <ul id="notesList"></ul>
+        <div id="emptyState" class="empty-state" hidden>
+            <strong>Aucune note pour l'instant.</strong>
+            <span>Commencez une nouvelle idée, tout est sauvegardé côté API Flask.</span>
+</div>
+    </section>
+</main>
+
+<script>
+    const API_URL = "/api"; 
+    const form = document.getElementById('noteForm');
+    const input = document.getElementById('noteInput');
+    const list = document.getElementById('notesList');
+    const emptyState = document.getElementById('emptyState');
+    const noteCounter = document.querySelector('[data-note-count]');
+  
+    document.addEventListener('DOMContentLoaded', loadNotes);
+    form.addEventListener('submit', event => {
+        event.preventDefault();
+        addNote();
+    });
+
+    async function loadNotes() {
+        try {
+            const response = await fetch(`${API_URL}/notes`);
+            const notes = await response.json();
+            renderNotes(notes);
+        } catch (error) {
+            console.error("Erreur chargement:", error);
+        }
+    }
+
+    function renderNotes(notes) {
+        list.innerHTML = '';
+        noteCounter.textContent = String(notes.length).padStart(2, '0');
+
+        if (!notes.length) {
+            emptyState.hidden = false;
+            return;
+        }
+
+        emptyState.hidden = true;
+        notes.forEach((note, index) => {
+            const li = document.createElement('li');
+            li.className = 'note-row';
+
+            const contentWrapper = document.createElement('div');
+            contentWrapper.className = 'note-content';
+
+            const meta = document.createElement('span');
+            meta.className = 'note-meta';
+            meta.textContent = `Note ${String(index + 1).padStart(2, '0')}`;
+
+            const text = document.createElement('p');
+            text.className = 'note-text';
+            text.textContent = note.content;
+
+            contentWrapper.append(meta, text);
+
+            const actions = document.createElement('div');
+            actions.className = 'note-actions';
+
+            const deleteBtn = document.createElement('button');
+            deleteBtn.type = 'button';
+            deleteBtn.textContent = 'Supprimer';
+            deleteBtn.onclick = () => deleteNote(note.id);
+
+            actions.append(deleteBtn);
+            li.append(contentWrapper, actions);
+            list.appendChild(li);
+        });
+    }
+
+    async function addNote() {
+        const content = input.value.trim();
+        if (!content) return;
+
+        try {
+            form.querySelector('button').disabled = true;
+            await fetch(`${API_URL}/add`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content })
+            });
+            input.value = ''; 
+            await loadNotes();
+        } catch (error) {
+            console.error("Erreur ajout:", error);
+        } finally {
+            form.querySelector('button').disabled = false;
+        }
+    }
+
+    async function deleteNote(id) {
+        if (!confirm("Supprimer cette note ?")) return;
+        
+        try {
+            await fetch(`${API_URL}/delete`, {
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id })
+            });
+            await loadNotes();
+        } catch (error) {
+            console.error("Erreur suppression:", error);
+        }
+    }
+</script>
+
+</body>
+</html>

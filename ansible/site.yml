@@ -1,0 +1,99 @@
+---
+- name: Déploiement complet NotesApp sur Kubernetes
+  hosts: localhost
+  connection: local
+  become: yes
+  vars:
+    ansible_user_id: "{{ lookup('env', 'USER') }}"
+    project_dir: "../terraform"
+
+  tasks:
+    - name: Installation des dépendances système
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg-agent
+          - software-properties-common
+          - conntrack
+        state: present
+        update_cache: yes
+
+    - name: Ajout de la clé GPG Docker
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    - name: Ajout du dépôt Docker
+      apt_repository:
+        repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu focal stable
+        state: present
+
+    - name: Installation de Docker
+      apt:
+        name: docker-ce
+        state: present
+
+    - name: Démarrage du service Docker
+      service:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Ajout de l'utilisateur au groupe Docker
+      user:
+        name: "{{ ansible_user_id }}"
+        groups: docker
+        append: yes
+
+    - name: Installation de Kubectl
+      get_url:
+        url: https://dl.k8s.io/release/v1.28.0/bin/linux/amd64/kubectl
+        dest: /usr/local/bin/kubectl
+        mode: '0755'
+
+    - name: Installation de Minikube
+      get_url:
+        url: https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+        dest: /usr/local/bin/minikube
+        mode: '0755'
+
+    - name: Installation de Terraform 
+      shell: |
+        wget -O- https://apt.releases.hashicorp.com/gpg | gpg --dearmor | tee /usr/share/keyrings/hashicorp-archive-keyring.gpg
+        echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | tee /etc/apt/sources.list.d/hashicorp.list
+        apt-get update && apt-get install terraform -y
+      args:
+        creates: /usr/bin/terraform
+
+    - name: Démarrage de Minikube 
+      become: no
+      command: minikube start --driver=docker --force
+      register: minikube_start
+      changed_when: "'Done' in minikube_start.stdout"
+
+    - name: Activation des Addons (Ingress & MetalLB)
+      become: no
+      command: "{{ item }}"
+      loop:
+        - minikube addons enable ingress
+        - minikube addons enable metallb
+
+ 
+    - name: Initialisation Terraform
+      become: no
+      command: terraform init
+      args:
+        chdir: "{{ project_dir }}"
+
+    - name: Application Terraform (Déploiement App + Ingress)
+      become: no
+      command: terraform apply -auto-approve -var="vm_ip={{ ansible_default_ipv4.address }}"
+      args:
+        chdir: "{{ project_dir }}"
+
+ 
+    - name: Affichage de l'URL d'accès
+      debug:
+        msg: "L'application est accessible sur : http://notes.{{ ansible_default_ipv4.address }}.nip.io"
