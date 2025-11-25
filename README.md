@@ -156,12 +156,13 @@ curl http://localhost:5000/notes
 
 ---
 
-## 📸 Deliverables Checklist
+## 👤 Author
 
-- ✅ Working Ansible playbook (`ansible/site.yml`)
-- ✅ Terraform IaC (`terraform/*.tf`)
-- ✅ Application source (frontend, backend, db)
-- ✅ Screenshot proving UI reachable via ingress (`docs/screenshots/frontend.png`)
-- ✅ README (this file)
+- **Name:** Fadi BAHTAT 
+- **Email:** fadi.baht@gmail.com 
+- **GitHub:** [@NotEmcee](https://github.com/NotEmcee)
 
-Enjoy hacking on NotesApp! PRs and improvements welcome.
+Feel free to reach out for questions, improvements, or collaboration ideas around this stack.
+
+---
+
